@@ -1,10 +1,12 @@
 #[contract]
 
-trait Mintable {
+#[abi]
+trait IMintable {
     fn mint(recipient: ContractAddress, amount: u256) -> bool;
 }
 
-trait Burnable {
+#[abi]
+trait IBurnable {
     fn burn_away(owner: ContractAddress, amount: u256) -> bool;
 }
 
@@ -12,6 +14,8 @@ mod LordsL2 {
     use array::ArrayTrait;
     use core::contract_address::ContractAddress;
     use core::integer::u256;
+    use starknet::get_caller_address;
+    // use starknet::send_message_to_l1;
 
     const PROCESS_WITHDRAWAL = 1; // operation ID sent in the message payload to L1
     const U128_MAX: u128 = 0xffffffffffffffffffffffffffffffff_u128; // 2**128 - 1
@@ -41,8 +45,7 @@ mod LordsL2 {
             high: amount_high.try_into().unwrap())
         };
 
-        // TODO: do contract call
-        Mintable.mint(l2_token::read(), recipient, amount);
+        IMintable.mint(l2_token::read(), recipient, amount);
     }
 
     #[external]
@@ -50,12 +53,7 @@ mod LordsL2 {
         assert_eth_address_range(l1_recipient);
         assert(l1_recipient != l1_bridge::read(), 'Recipient cannot be the bridge');
 
-        // TODO: replace with correct syscall once available
-        //let caller: felt = get_caller_address();
-        let caller: felt = 0;
-
-        // TODO: contract call
-        Burnable.burn_away(l2_token::read(), caller, amount);
+        IBurnable.burn_away(l2_token::read(), get_caller_address(), amount);
 
         // TODO: send message to L1
         let mut message: Array<felt> = ArrayTrait::new();
