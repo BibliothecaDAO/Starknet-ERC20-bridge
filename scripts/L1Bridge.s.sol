@@ -31,9 +31,9 @@ contract DeployL1Bridge is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         bytes32 salt = keccak256(bytes(SALT));
-        address starknet = 0xde29d060D45901Fb19ED6C6e959EB22d8626708e; // goerli
+        address starknet = address(0xde29d060D45901Fb19ED6C6e959EB22d8626708e); // goerli
         address l1Token = address(0x7543919933Eef56f754dAF6835fA97F6dfD785D8); // goerli
-        address l2Bridge = address(0xc0de);
+        uint256 l2Bridge = 0x59ed05a42af8cc47269faedf8f025465bdfff8742e07689d9e90f99655f83ff;
 
         // address starknet = 0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4; // mainnet
         // address l1Token = 0x686f2404e77ab0d9070a46cdfb0b7fecdd2318b0; // mainnet
