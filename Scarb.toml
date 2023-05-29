@@ -1,10 +1,10 @@
 [package]
 name = "lords"
-version = "0.1.0"
+version = "1.0.0"
 
 # Build each contract as a standalone JSON file
 [[target.starknet-contract]]
 
 [scripts]
-fmt = "cairo-format --recursive src/starknet"
-check_fmt = "cairo-format --recursive --check --print-parsing-errors src/starknet"
+fmt = "cairo-format --recursive src/l2"
+check_fmt = "cairo-format --recursive --check --print-parsing-errors src/l2"

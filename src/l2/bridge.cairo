@@ -5,7 +5,7 @@ trait IToken {
 }
 
 #[contract]
-mod LordsL2 {
+mod Bridge {
     use super::{ITokenDispatcher, ITokenDispatcherTrait};
 
     use array::ArrayTrait;
@@ -58,7 +58,7 @@ mod LordsL2 {
         message.append(l1_recipient);
         message.append(amount.low.into());
         message.append(amount.high.into());
-        
+
         send_message_to_l1_syscall(l1_recipient, message.span());
         WithdrawalInitiated(l1_recipient, amount);
     }

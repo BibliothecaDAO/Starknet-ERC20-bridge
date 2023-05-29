@@ -1,2 +1,2 @@
 [crate_roots]
-lords = "src/starknet"
+lords = "src/l2"

@@ -1,5 +1,5 @@
 #[contract]
-mod LordsToken {
+mod Token {
     use starknet::{ContractAddress, contract_address, get_caller_address};
     use zeroable::Zeroable;
 
