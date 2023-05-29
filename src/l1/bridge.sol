@@ -34,14 +34,14 @@ interface IStarknetCore {
 }
 
 contract LordsL1Bridge {
-    /// @notice The StarkNet Core contract address on L1
-    address public immutable starkNet;
+    /// @notice The Starknet Core contract address on L1
+    address public immutable starknet;
 
     /// @notice The $LORDS ERC20 contract address on L1
-    address public immutable l1Lords;
+    address public immutable l1Token;
 
     /// @notice The L2 address of the $LORDS bridge, the counterpart to this contract
-    uint256 public immutable l2LordsBridge;
+    uint256 public immutable l2Bridge;
 
     event LogDeposit(
         address indexed l1Sender,
@@ -73,36 +73,37 @@ contract LordsL1Bridge {
     }
 
     constructor(
-        address _starkNet,
-        address _l1Lords,
-        uint256 _l2LordsBridge
+        address _starknet,
+        address _l1Token,
+        uint256 _l2Bridge
     ) {
-        require(_l2LordsBridge < CAIRO_PRIME, "Invalid L2 bridge address");
+        require(_l2Bridge < CAIRO_PRIME, "Invalid L2 bridge address");
 
-        starkNet = _starkNet;
-        l1Lords = _l1Lords;
-        l2LordsBridge = _l2LordsBridge;
+        starknet = _starknet;
+        l1Token = _l1Token;
+        l2Bridge = _l2Bridge;
     }
 
     /// @notice Function used to bridge $LORDS from L1 to L2
     /// @param amount How many $LORDS to send from msg.sender
     /// @param l2Recipient To which L2 address should we deposit the $LORDS to
-    function deposit(uint256 amount, uint256 l2Recipient) external {
+    /// @param fee Compulsory fee paid to the sequencer for passing on the message
+    function deposit(uint256 amount, uint256 l2Recipient, uint256 fee) external {
+        require(amount > 0, "Amount is 0");
         require(
             l2Recipient != 0 &&
-            l2Recipient != l2LordsBridge &&
+            l2Recipient != l2Bridge &&
             l2Recipient < CAIRO_PRIME,
             "Invalid L2 recipient"
         );
 
-        uint256[] memory payload = new uint256[](4);
+        uint256[] memory payload = new uint256[](3);
         payload[0] = l2Recipient;
         (payload[1], payload[2]) = splitUint256(amount);
-        payload[3] = uint256(uint160(msg.sender));
 
-        IERC20Transfer(l1Lords).transferFrom(msg.sender, address(this), amount);
-        IStarknetCore(starkNet).sendMessageToL2(
-            l2LordsBridge,
+        IERC20Transfer(l1Token).transferFrom(msg.sender, address(this), amount);
+        IStarknetCore(starknet).sendMessageToL2{value: fee}(
+            l2Bridge,
             DEPOSIT_SELECTOR,
             payload
         );
@@ -121,8 +122,8 @@ contract LordsL1Bridge {
 
         // The call to consumeMessageFromL2 will succeed only if a
         // matching L2->L1 message exists and is ready for consumption.
-        IStarknetCore(starkNet).consumeMessageFromL2(l2LordsBridge, payload);
-        IERC20Transfer(l1Lords).transferFrom(address(this), l1Recipient, amount);
+        IStarknetCore(starknet).consumeMessageFromL2(l2Bridge, payload);
+        IERC20Transfer(l1Token).transferFrom(address(this), l1Recipient, amount);
 
         emit LogWithdrawal(l1Recipient, amount);
     }
