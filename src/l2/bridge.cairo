@@ -17,6 +17,9 @@ mod Bridge {
     // operation ID sent in the message payload to L1
     const PROCESS_WITHDRAWAL: felt252 = 1;
 
+    // Ethereum addresses are bound to 2**160
+    const ETH_ADDRESS_BOUND: u256 = 0x10000000000000000000000000000000000000000_u256;
+
     #[event]
     fn DepositHandled(recipient: ContractAddress, amount: u256) {}
 
@@ -31,8 +34,13 @@ mod Bridge {
     }
 
     #[constructor]
-    fn constructor(l1_bridge: felt252, l2_token: ContractAddress) {
+    fn constructor(l1_bridge: felt252) {
         l1_bridge::write(l1_bridge);
+    }
+
+    #[external]
+    fn set_l2_token_once(l2_token: ContractAddress) {
+        assert(l2_token::read().contract_address.is_zero(), 'Bridge: L2 token already set');
         l2_token::write(ITokenDispatcher { contract_address: l2_token });
     }
 
@@ -46,9 +54,7 @@ mod Bridge {
     #[external]
     fn initiate_withdrawal(l1_recipient: felt252, amount: u256) {
         assert(l1_recipient.is_non_zero(), 'Bridge: L1 address cannot be 0');
-        // Ethereum addresses are bound to 2**160 which is this number below as u256
-        let eth_address_bound = u256 { low: 0, high: 0x100000000 };
-        assert(l1_recipient.into() < eth_address_bound, 'Bridge: L1 addr out of bounds');
+        assert(l1_recipient.into() < ETH_ADDRESS_BOUND, 'Bridge: L1 addr out of bounds');
         assert(l1_recipient != l1_bridge::read(), 'Bridge: invalid recipient');
 
         l2_token::read().burn(get_caller_address(), amount);
