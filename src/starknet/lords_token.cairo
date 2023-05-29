@@ -1,15 +1,12 @@
-// TODO: use eth_address https://github.com/starkware-libs/cairo/pull/2913
-
 #[contract]
 mod LordsToken {
-    use starknet::contract_address;
-    use starknet::ContractAddress;
-    use starknet::ContractAddressZeroable;
-    use starknet::get_caller_address;
+    use starknet::{ContractAddress, contract_address, get_caller_address};
     use zeroable::Zeroable;
 
     struct Storage {
+        // address of the Lords bridge contract on Starknet, only it can mint and burn
         l2_bridge: ContractAddress,
+        // ERC20 related storage vars
         supply: u256,
         balances: LegacyMap<ContractAddress, u256>,
         allowances: LegacyMap<(ContractAddress, ContractAddress), u256>,
@@ -38,7 +35,7 @@ mod LordsToken {
 
     #[view]
     fn decimals() -> u8 {
-        18_u8
+        18
     }
 
     #[view]
@@ -78,26 +75,24 @@ mod LordsToken {
     #[external]
     fn mint(recipient: ContractAddress, amount: u256) -> bool {
         lib::assert_is_bridge(get_caller_address());
-        assert(recipient.is_non_zero(), 'mint to 0');
+        // deliberately not doing any more checks because this fn
+        // is called by the bridge's L1 handler, don't want it to panic
 
         supply::write(supply::read() + amount);
-        let balance = balances::read(recipient);
-        balances::write(recipient, balance + amount);
+        balances::write(recipient, balances::read(recipient) + amount);
 
-        Transfer(ContractAddressZeroable::zero(), recipient, amount);
+        Transfer(Zeroable::zero(), recipient, amount);
         true
     }
 
     #[external]
     fn burn(owner: ContractAddress, amount: u256) -> bool {
         lib::assert_is_bridge(get_caller_address());
-        
-        // arithmetic operations panic on underflow
-        supply::write(supply::read() - amount);
-        let balance = balances::read(owner);
-        balances::write(owner, balance - amount);
 
-        Transfer(owner, ContractAddressZeroable::zero(), amount);
+        supply::write(supply::read() - amount);
+        balances::write(owner, balances::read(owner) - amount);
+
+        Transfer(owner, Zeroable::zero(), amount);
         true
     }
 
@@ -107,17 +102,16 @@ mod LordsToken {
 
     mod lib {
         use integer::BoundedInt;
-        use starknet::contract_address;
-        use starknet::ContractAddress;
+        use starknet::{ContractAddress, contract_address};
         use zeroable::Zeroable;
 
         #[inline(always)]
         fn assert_is_bridge(addr: ContractAddress) {
-            assert(addr == super::l2_bridge::read(), 'caller not bridge');
+            assert(addr == super::l2_bridge::read(), 'ERC20: caller not bridge');
         }
 
         fn approve(owner: ContractAddress, spender: ContractAddress, amount: u256) {
-            assert(spender.is_non_zero(), 'approve to 0');
+            assert(spender.is_non_zero(), 'ERC20: approve to 0');
             super::allowances::write((owner, spender), amount);
 
             super::Approval(owner, spender, amount);
@@ -125,11 +119,10 @@ mod LordsToken {
 
         fn spend_allowance(owner: ContractAddress, spender: ContractAddress, amount: u256) {
             let allowance = super::allowances::read((owner, spender));
-            if allowance == BoundedInt::max() {
-                return ();
+            if allowance != BoundedInt::max() {
+                // if not unlimited allowance, update it
+                approve(owner, spender, allowance - amount);
             }
-        
-            approve(owner, spender, allowance - amount)
         }
 
         fn transfer(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
@@ -141,5 +134,3 @@ mod LordsToken {
         }
     }
 }
-
-// TODO: tests

@@ -1,28 +1,21 @@
-use starknet::ContractAddress;
-
 #[abi]
 trait IToken {
-    fn burn(owner: ContractAddress, amount: u256) -> bool;
-    fn mint(recipient: ContractAddress, amount: u256) -> bool;
+    fn burn(owner: starknet::ContractAddress, amount: u256) -> bool;
+    fn mint(recipient: starknet::ContractAddress, amount: u256) -> bool;
 }
 
 #[contract]
 mod LordsL2 {
-    use super::ITokenDispatcher;
-    use super::ITokenDispatcherTrait;
+    use super::{ITokenDispatcher, ITokenDispatcherTrait};
 
     use array::ArrayTrait;
-    use core::integer::u256;
-    use option::OptionTrait;
-    use starknet::ContractAddress;
-    use starknet::contract_address;
-    use starknet::get_caller_address;
+    use starknet::{ContractAddress, EthAddress, contract_address, get_caller_address};
     use starknet::syscalls::send_message_to_l1_syscall;
-    use traits::Into;
-    use traits::TryInto;
+    use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
-    const PROCESS_WITHDRAWAL: felt252 = 1; // operation ID sent in the message payload to L1
+    // operation ID sent in the message payload to L1
+    const PROCESS_WITHDRAWAL: felt252 = 1;
 
     #[event]
     fn DepositHandled(recipient: ContractAddress, amount: u256) {}
@@ -31,31 +24,34 @@ mod LordsL2 {
     fn WithdrawalInitiated(recipient: felt252, amount: u256) {}
 
     struct Storage {
-        // L1 bridge contract address, the L1 counterpart to this contract
+        // address L1 bridge contract address, the L1 counterpart to this contract
         l1_bridge: felt252,
-        // address of the $LORDS token contract on the L2
-        l2_token: ContractAddress
+        // the Lords ERC20 token on Starknet
+        l2_token: ITokenDispatcher
     }
 
     #[constructor]
     fn constructor(l1_bridge: felt252, l2_token: ContractAddress) {
         l1_bridge::write(l1_bridge);
-        l2_token::write(l2_token);
+        l2_token::write(ITokenDispatcher { contract_address: l2_token });
     }
 
     #[l1_handler]
     fn handle_deposit(from_address: felt252, recipient: ContractAddress, amount: u256) {
-        assert(from_address == l1_bridge::read(), 'invalid L1 message origin');
-        ITokenDispatcher { contract_address: l2_token::read() }.mint(recipient, amount);
+        assert(from_address == l1_bridge::read(), 'Bridge: invalid L1 origin');
+        l2_token::read().mint(recipient, amount);
         DepositHandled(recipient, amount);
     }
 
     #[external]
     fn initiate_withdrawal(l1_recipient: felt252, amount: u256) {
-        assert_eth_address_range(l1_recipient);
-        assert(l1_recipient != l1_bridge::read(), 'invalid recipient');
+        assert(l1_recipient.is_non_zero(), 'Bridge: L1 address cannot be 0');
+        // Ethereum addresses are bound to 2**160 which is this number below as u256
+        let eth_address_bound = u256 { low: 0, high: 0x100000000 };
+        assert(l1_recipient.into() < eth_address_bound, 'Bridge: L1 addr out of bounds');
+        assert(l1_recipient != l1_bridge::read(), 'Bridge: invalid recipient');
 
-        ITokenDispatcher { contract_address: l2_token::read() }.burn(get_caller_address(), amount);
+        l2_token::read().burn(get_caller_address(), amount);
 
         let mut message: Array<felt252> = ArrayTrait::new();
         message.append(PROCESS_WITHDRAWAL);
@@ -74,22 +70,6 @@ mod LordsL2 {
 
     #[view]
     fn get_token() -> ContractAddress {
-        l2_token::read()
-    }
-
-    //
-    // Internal
-    //
-
-    fn assert_eth_address_range(addr: felt252) {
-        assert(addr.is_non_zero(), 'Ethereum address cannot be zero');
-
-        // we cannot compare felt252 anymore, so we have to use u256
-        // L1 addresses are 160 bits long, so the upper (exclusive) bound
-        // in u256 representation is { low: 0, high: 2**(160-128) }
-        let max_l1_addr_value: u256 = u256 { low: 0_u128, high: 0x100000000_u128 };
-        assert(addr.into() < max_l1_addr_value, 'l1 addr out of bounds');
+        l2_token::read().contract_address
     }
 }
-
-// TODO: test, how?
