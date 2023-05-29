@@ -1,3 +1,5 @@
+// TODO: use eth_address https://github.com/starkware-libs/cairo/pull/2913
+
 #[contract]
 mod LordsToken {
     use starknet::contract_address;
