@@ -1,0 +1,2 @@
+[crate_roots]
+lords = "src/l2"
