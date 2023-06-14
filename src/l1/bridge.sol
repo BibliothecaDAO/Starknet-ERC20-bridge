@@ -117,7 +117,7 @@ contract LordsL1Bridge {
     function withdraw(uint256 amount, address l1Recipient) external {
         uint256[] memory payload = new uint256[](4);
         payload[0] = PROCESS_WITHDRAWAL;
-        payload[1] = uint256(uint160(msg.sender));
+        payload[1] = uint256(uint160(l1Recipient));
         (payload[2], payload[3]) = splitUint256(amount);
 
         // The call to consumeMessageFromL2 will succeed only if a
