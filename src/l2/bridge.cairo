@@ -65,7 +65,7 @@ mod Bridge {
         message.append(amount.low.into());
         message.append(amount.high.into());
 
-        send_message_to_l1_syscall(l1_recipient, message.span());
+        send_message_to_l1_syscall(l1_bridge::read(), message.span());
         WithdrawalInitiated(l1_recipient, amount);
     }
 
