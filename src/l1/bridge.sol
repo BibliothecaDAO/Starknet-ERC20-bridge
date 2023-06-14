@@ -88,7 +88,7 @@ contract LordsL1Bridge {
     /// @param amount How many $LORDS to send from msg.sender
     /// @param l2Recipient To which L2 address should we deposit the $LORDS to
     /// @param fee Compulsory fee paid to the sequencer for passing on the message
-    function deposit(uint256 amount, uint256 l2Recipient, uint256 fee) external {
+    function deposit(uint256 amount, uint256 l2Recipient, uint256 fee) external payable {
         require(amount > 0, "Amount is 0");
         require(
             l2Recipient != 0 &&
