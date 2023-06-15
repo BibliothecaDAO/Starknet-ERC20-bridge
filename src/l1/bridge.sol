@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-interface IERC20Transfer {
-     function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool success);
+interface IERC20Like {
+    function transfer(address to, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 value) external returns (bool success);
 }
 
 interface IStarknetCore {
@@ -88,7 +85,7 @@ contract LordsL1Bridge {
     /// @param amount How many $LORDS to send from msg.sender
     /// @param l2Recipient To which L2 address should we deposit the $LORDS to
     /// @param fee Compulsory fee paid to the sequencer for passing on the message
-    function deposit(uint256 amount, uint256 l2Recipient, uint256 fee) external {
+    function deposit(uint256 amount, uint256 l2Recipient, uint256 fee) external payable {
         require(amount > 0, "Amount is 0");
         require(
             l2Recipient != 0 &&
@@ -101,7 +98,7 @@ contract LordsL1Bridge {
         payload[0] = l2Recipient;
         (payload[1], payload[2]) = splitUint256(amount);
 
-        IERC20Transfer(l1Token).transferFrom(msg.sender, address(this), amount);
+        IERC20Like(l1Token).transferFrom(msg.sender, address(this), amount);
         IStarknetCore(starknet).sendMessageToL2{value: fee}(
             l2Bridge,
             DEPOSIT_SELECTOR,
@@ -117,13 +114,13 @@ contract LordsL1Bridge {
     function withdraw(uint256 amount, address l1Recipient) external {
         uint256[] memory payload = new uint256[](4);
         payload[0] = PROCESS_WITHDRAWAL;
-        payload[1] = uint256(uint160(msg.sender));
+        payload[1] = uint256(uint160(l1Recipient));
         (payload[2], payload[3]) = splitUint256(amount);
 
         // The call to consumeMessageFromL2 will succeed only if a
         // matching L2->L1 message exists and is ready for consumption.
         IStarknetCore(starknet).consumeMessageFromL2(l2Bridge, payload);
-        IERC20Transfer(l1Token).transferFrom(address(this), l1Recipient, amount);
+        IERC20Like(l1Token).transfer(l1Recipient, amount);
 
         emit LogWithdrawal(l1Recipient, amount);
     }
