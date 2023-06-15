@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-interface IERC20Transfer {
-     function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool success);
+interface IERC20Like {
+    function transfer(address to, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 value) external returns (bool success);
 }
 
 interface IStarknetCore {
@@ -101,7 +98,7 @@ contract LordsL1Bridge {
         payload[0] = l2Recipient;
         (payload[1], payload[2]) = splitUint256(amount);
 
-        IERC20Transfer(l1Token).transferFrom(msg.sender, address(this), amount);
+        IERC20Like(l1Token).transferFrom(msg.sender, address(this), amount);
         IStarknetCore(starknet).sendMessageToL2{value: fee}(
             l2Bridge,
             DEPOSIT_SELECTOR,
@@ -123,7 +120,7 @@ contract LordsL1Bridge {
         // The call to consumeMessageFromL2 will succeed only if a
         // matching L2->L1 message exists and is ready for consumption.
         IStarknetCore(starknet).consumeMessageFromL2(l2Bridge, payload);
-        IERC20Transfer(l1Token).transferFrom(address(this), l1Recipient, amount);
+        IERC20Like(l1Token).transfer(l1Recipient, amount);
 
         emit LogWithdrawal(l1Recipient, amount);
     }
