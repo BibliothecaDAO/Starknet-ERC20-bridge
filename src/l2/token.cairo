@@ -43,8 +43,18 @@ mod Token {
         supply::read()
     }
 
+   #[view]
+    fn totalSupply() -> u256 {
+        supply::read()
+    }
+
     #[view]
     fn balance_of(account: ContractAddress) -> u256 {
+        balances::read(account)
+    }
+
+    #[view]
+    fn balanceOf(account: ContractAddress) -> u256 {
         balances::read(account)
     }
 
@@ -70,6 +80,11 @@ mod Token {
         lib::spend_allowance(sender, get_caller_address(), amount);
         lib::transfer(sender, recipient, amount);
         true
+    }
+
+    #[external]
+    fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
+        transfer_from(sender, recipient, amount)
     }
 
     #[external]
@@ -102,7 +117,7 @@ mod Token {
 
     mod lib {
         use integer::BoundedInt;
-        use starknet::{ContractAddress, contract_address};
+        use starknet::ContractAddress;
         use zeroable::Zeroable;
 
         #[inline(always)]
